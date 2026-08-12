@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Walk-Up · Name the batter's song</title>
+<meta name="description" content="A guessing game: we give you the ballplayer, you name the walk-up song that played when he came to the plate." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800&family=Public+Sans:ital,wght@0,400;0,600;1,400&family=Chivo+Mono:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     THE DATA
+     ══════════════════════════════════════════════════════════════════
+       name   : player name
+       pos    : position abbreviation (RP, SP, 3B, OF, C ...)
+       team   : the club he played for
+       years  : his tenure with THAT team, per Baseball Reference
+       song   : the answer, exactly as you'd write it
+       artist : performer (used as the first hint)
+       yt     : YouTube video id — the part after "watch?v=".
+                From https://www.youtube.com/watch?v=iH6ppOAB5d0
+                the id is iH6ppOAB5d0. Leave "" and the card shows a
+                search link instead of a player.
+       aliases: other spellings to accept. Punctuation, "the", and
+                accents are already ignored, so only add real alternates
+                ("Shipping Up to Boston" vs "I'm Shipping Up to Boston")
+       check  : "" when sourced. Otherwise a short note saying what
+                still needs confirming — it prints on the reveal card.
+     ══════════════════════════════════════════════════════════════════ -->
+<script>
+const PLAYERS = [
+
+  /* ── tenure pulled from Baseball Reference this session ── */
+  {
+    name: "Mitch Williams", pos: "RP", team: "Chicago Cubs", years: "1989\u20131990",
+    song: "Wild Thing", artist: "The Troggs", yt: "gSWInYFVksg",
+    aliases: [], check: ""
+  },
+  {
+    name: "Dick Allen", pos: "1B", team: "Chicago White Sox", years: "1972\u20131974",
+    song: "Superstar", artist: "Murray Head (Jesus Christ Superstar)", yt: "",
+    aliases: ["jesus christ superstar"], check: ""
+  },
+  {
+    name: "Ken Griffey Jr.", pos: "CF", team: "Seattle Mariners", years: "1989\u20131999",
+    song: "Hip Hop Hooray", artist: "Naughty by Nature", yt: "",
+    aliases: [], check: ""
+  },
+  {
+    name: "Brian Wilson", pos: "RP", team: "San Francisco Giants", years: "2006\u20132012",
+    song: "Jump Around", artist: "House of Pain", yt: "",
+    aliases: [], check: ""
+  },
+  {
+    name: "Grant Balfour", pos: "RP", team: "Oakland Athletics", years: "2011\u20132013",
+    song: "One", artist: "Metallica", yt: "",
+    aliases: [], check: ""
+  },
+  {
+    name: "Jeurys Familia", pos: "RP", team: "New York Mets", years: "2012\u20132018, 2019\u20132021",
+    song: "Danza Kuduro", artist: "Don Omar & Lucenzo", yt: "",
+    aliases: [], check: ""
+  },
+  {
+    name: "Edwin D\u00edaz", pos: "RP", team: "New York Mets", years: "2019\u20132025",
+    song: "Narco", artist: "Timmy Trumpet & Blasterjaxx", yt: "",
+    aliases: [], check: ""
+  },
+  {
+    name: "Jhoan Dur\u00e1n", pos: "RP", team: "Philadelphia Phillies", years: "2025\u2013present",
+    song: "El Incomprendido", artist: "Farruko", yt: "",
+    aliases: [], check: ""
+  },
+
+  /* ── tenure from memory — still to be checked against B-Ref ── */
+  {
+    name: "Mariano Rivera", pos: "RP", team: "New York Yankees", years: "1995\u20132013",
+    song: "Enter Sandman", artist: "Metallica", yt: "CD-E-LDc384",
+    aliases: [], check: "Years unverified"
+  },
+  {
+    name: "Trevor Hoffman", pos: "RP", team: "San Diego Padres", years: "1993\u20132008",
+    song: "Hells Bells", artist: "AC/DC", yt: "etAIpkdhU9Q",
+    aliases: ["hell's bells"], check: "Years unverified"
+  },
+  {
+    name: "Sergio Romo", pos: "RP", team: "San Francisco Giants", years: "2008\u20132016",
+    song: "El Mech\u00f3n", artist: "Banda MS", yt: "iH6ppOAB5d0",
+    aliases: ["el mechon"], check: "Years unverified"
+  },
+  {
+    name: "Jonathan Papelbon", pos: "RP", team: "Boston Red Sox", years: "2005\u20132011",
+    song: "I'm Shipping Up to Boston", artist: "Dropkick Murphys", yt: "9BMv4kecwEQ",
+    aliases: ["shipping up to boston", "im shipping up to boston"], check: "Years unverified"
+  },
+  {
+    name: "Chipper Jones", pos: "3B", team: "Atlanta Braves", years: "1993\u20132012",
+    song: "Crazy Train", artist: "Ozzy Osbourne", yt: "FVovq9TGBw0",
+    aliases: [], check: "Years unverified (missed 1994 injured)"
+  },
+  {
+    name: "Eric Gagn\u00e9", pos: "RP", team: "Los Angeles Dodgers", years: "1999\u20132006",
+    song: "Welcome to the Jungle", artist: "Guns N' Roses", yt: "o1tj2zJ2Wvg",
+    aliases: [], check: "Years unverified"
+  },
+  {
+    name: "Dennis Eckersley", pos: "RP", team: "Oakland Athletics", years: "1987\u20131995",
+    song: "Bad to the Bone", artist: "George Thorogood & The Destroyers", yt: "",
+    aliases: [], check: "Years unverified"
+  },
+  {
+    name: "Kenley Jansen", pos: "RP", team: "Los Angeles Dodgers", years: "2010\u20132021",
+    song: "California Love", artist: "2Pac", yt: "",
+    aliases: [], check: "Years unverified"
+  },
+  {
+    name: "Tim Lincecum", pos: "SP", team: "San Francisco Giants", years: "2007\u20132015",
+    song: "Electric Feel", artist: "MGMT", yt: "",
+    aliases: [], check: "Years unverified"
+  },
+  {
+    name: "CC Sabathia", pos: "SP", team: "New York Yankees", years: "2009\u20132019",
+    song: "Big Poppa", artist: "The Notorious B.I.G.", yt: "",
+    aliases: [], check: "Years unverified"
+  },
+  {
+    name: "Lance Berkman", pos: "1B", team: "Houston Astros", years: "1999\u20132010",
+    song: "God's Gonna Cut You Down", artist: "Johnny Cash", yt: "",
+    aliases: [], check: "Years unverified"
+  },
+  {
+    name: "Shin-Soo Choo", pos: "OF", team: "Texas Rangers", years: "2014\u20132020",
+    song: "Regulate", artist: "Warren G & Nate Dogg", yt: "",
+    aliases: [], check: "Years unverified"
+  },
+  {
+    name: "Koji Uehara", pos: "RP", team: "Boston Red Sox", years: "2013\u20132016",
+    song: "Sandstorm", artist: "Darude", yt: "",
+    aliases: [], check: "Years unverified"
+  }
+];
+</script>
+
+<style>
+:root{
+  --ink:#0D1420;
+  --panel:#16202E;
+  --panel-2:#1D2938;
+  --line:#2C3B4E;
+  --chalk:#EEF1EC;
+  --mute:#8A9AAE;
+  --sodium:#F5B841;
+  --clay:#C05A34;
+  --turf:#57A773;
+
+  --display:"Big Shoulders Display","Haettenschweiler","Arial Narrow",sans-serif;
+  --body:"Public Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --data:"Chivo Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+body{
+  background:var(--ink);
+  color:var(--chalk);
+  font-family:var(--body);
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* the faint glow of stadium lights sitting above the field */
+body::before{
+  content:"";
+  position:fixed;
+  inset:0 0 auto 0;
+  height:60vh;
+  background:radial-gradient(ellipse 120% 100% at 50% -20%, rgba(245,184,65,.10), transparent 70%);
+  pointer-events:none;
+}
+
+.wrap{
+  width:100%;
+  max-width:760px;
+  margin:0 auto;
+  padding:0 20px 64px;
+  position:relative;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+}
+
+/* ── scoreboard strip ─────────────────────────────────────── */
+.bar{
+  display:flex;
+  align-items:baseline;
+  gap:22px;
+  padding:22px 0 20px;
+  border-bottom:1px solid var(--line);
+  flex-wrap:wrap;
+}
+
+.mark{
+  font-family:var(--display);
+  font-weight:800;
+  font-size:26px;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  margin-right:auto;
+  line-height:1;
+}
+.mark span{color:var(--sodium)}
+
+.tally{display:flex;gap:20px}
+
+.stat{text-align:right;line-height:1.15}
+.stat b{
+  display:block;
+  font-family:var(--data);
+  font-weight:700;
+  font-size:19px;
+  font-variant-numeric:tabular-nums;
+}
+.stat i{
+  font-family:var(--data);
+  font-style:normal;
+  font-size:9.5px;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  color:var(--mute);
+}
+.stat.hot b{color:var(--sodium)}
+
+/* ── the at-bat card ──────────────────────────────────────── */
+.card{
+  margin-top:44px;
+  flex:1;
+}
+
+.eyebrow{
+  font-family:var(--data);
+  font-size:10px;
+  letter-spacing:.3em;
+  text-transform:uppercase;
+  color:var(--clay);
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin-bottom:14px;
+}
+.eyebrow::after{
+  content:"";
+  flex:1;
+  height:1px;
+  background:var(--line);
+}
+
+.who{display:flex;gap:16px;align-items:flex-start}
+
+.chip{
+  font-family:var(--data);
+  font-weight:700;
+  font-size:12px;
+  letter-spacing:.08em;
+  color:var(--sodium);
+  border:1px solid var(--sodium);
+  border-radius:2px;
+  padding:7px 9px 6px;
+  margin-top:9px;
+  flex-shrink:0;
+}
+
+.name{
+  font-family:var(--display);
+  font-weight:700;
+  font-size:clamp(42px,9vw,74px);
+  line-height:.94;
+  letter-spacing:.005em;
+  text-transform:uppercase;
+}
+
+.meta{
+  font-size:14px;
+  color:var(--mute);
+  margin-top:9px;
+}
+.meta em{font-style:normal;color:var(--chalk)}
+.meta .years{
+  font-family:var(--data);
+  font-weight:700;
+  color:var(--sodium);
+  font-variant-numeric:tabular-nums;
+  letter-spacing:.02em;
+}
+
+/* ── signature: the waveform answer field ─────────────────── */
+.deck{margin-top:38px}
+
+.wave{
+  display:flex;
+  align-items:flex-end;
+  gap:3px;
+  height:66px;
+  padding:0 2px;
+  margin-bottom:-1px;
+}
+.wave i{
+  flex:1;
+  min-width:2px;
+  background:var(--line);
+  height:8%;
+  border-radius:1px 1px 0 0;
+  transition:height .22s cubic-bezier(.2,.8,.3,1), background-color .3s;
+}
+.wave.armed i{background:var(--clay)}
+.wave.hit i{background:var(--turf)}
+.wave.miss i{background:#6B3140}
+
+.field{
+  display:flex;
+  border:1px solid var(--line);
+  border-radius:3px;
+  background:var(--panel);
+  overflow:hidden;
+}
+.field:focus-within{border-color:var(--sodium)}
+
+#guess{
+  flex:1;
+  background:none;
+  border:0;
+  outline:0;
+  color:var(--chalk);
+  font-family:var(--body);
+  font-size:17px;
+  padding:17px 18px;
+  min-width:0;
+}
+#guess::placeholder{color:#5C6C80}
+
+#play{
+  background:var(--sodium);
+  color:var(--ink);
+  border:0;
+  font-family:var(--display);
+  font-weight:700;
+  font-size:17px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  padding:0 24px;
+  cursor:pointer;
+}
+#play:hover{background:#FFC95C}
+
+.row{
+  display:flex;
+  gap:10px;
+  margin-top:14px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+
+.ghost{
+  background:none;
+  border:1px solid var(--line);
+  border-radius:3px;
+  color:var(--mute);
+  font-family:var(--data);
+  font-size:11px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  padding:9px 14px;
+  cursor:pointer;
+}
+.ghost:hover{color:var(--chalk);border-color:var(--mute)}
+.ghost[disabled]{opacity:.35;cursor:default}
+.ghost:hover[disabled]{color:var(--mute);border-color:var(--line)}
+
+.say{
+  font-size:13.5px;
+  color:var(--mute);
+  margin-left:auto;
+  font-style:italic;
+}
+.say.no{color:var(--clay);font-style:normal}
+
+/* hint drawer */
+.hints{margin-top:16px;display:none;flex-direction:column;gap:7px}
+.hints.on{display:flex}
+.hints p{
+  font-family:var(--data);
+  font-size:12.5px;
+  color:var(--mute);
+  letter-spacing:.04em;
+}
+.hints p b{color:var(--chalk);font-weight:400;letter-spacing:.22em}
+
+/* ── reveal ───────────────────────────────────────────────── */
+.reveal{
+  display:none;
+  margin-top:32px;
+  border-top:2px solid var(--sodium);
+  background:linear-gradient(180deg,rgba(245,184,65,.07),transparent 60%);
+  padding:24px 22px 26px;
+}
+.reveal.on{display:block}
+
+.verdict{
+  font-family:var(--data);
+  font-size:10px;
+  letter-spacing:.3em;
+  text-transform:uppercase;
+  color:var(--turf);
+  margin-bottom:12px;
+}
+.verdict.cold{color:var(--clay)}
+
+.song{
+  font-family:var(--display);
+  font-weight:700;
+  font-size:clamp(30px,6.5vw,48px);
+  line-height:1;
+  text-transform:uppercase;
+}
+.by{
+  font-size:15px;
+  color:var(--sodium);
+  margin-top:7px;
+}
+.tape{
+  margin-top:18px;
+  position:relative;
+  width:100%;
+  max-width:520px;
+  aspect-ratio:16/9;
+  background:#000;
+  border:1px solid var(--line);
+  border-radius:3px;
+  overflow:hidden;
+}
+.screen{position:absolute;inset:0}
+.screen iframe{width:100%;height:100%;border:0;display:block}
+.screen .gap{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  height:100%;
+  padding:20px;
+  text-align:center;
+  font-family:var(--data);
+  font-size:11px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--mute);
+}
+
+.listen{
+  display:inline-block;
+  margin-top:12px;
+  font-family:var(--data);
+  font-size:10.5px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+  color:var(--mute);
+  text-decoration:none;
+  border-bottom:1px solid var(--line);
+  padding-bottom:2px;
+}
+.listen:hover{color:var(--sodium);border-color:var(--sodium)}
+.flag{
+  display:inline-block;
+  font-family:var(--data);
+  font-size:9.5px;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  color:var(--clay);
+  border:1px solid rgba(192,90,52,.5);
+  border-radius:2px;
+  padding:4px 7px;
+  margin-top:16px;
+}
+
+#next{
+  margin-top:22px;
+  background:none;
+  border:1px solid var(--sodium);
+  color:var(--sodium);
+  border-radius:3px;
+  font-family:var(--display);
+  font-weight:700;
+  font-size:16px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  padding:11px 22px;
+  cursor:pointer;
+}
+#next:hover{background:var(--sodium);color:var(--ink)}
+
+/* ── footer ───────────────────────────────────────────────── */
+.foot{
+  border-top:1px solid var(--line);
+  margin-top:48px;
+  padding-top:16px;
+  font-family:var(--data);
+  font-size:10.5px;
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  color:#5A6B7E;
+  display:flex;
+  justify-content:space-between;
+  gap:16px;
+  flex-wrap:wrap;
+}
+
+:focus-visible{outline:2px solid var(--sodium);outline-offset:2px}
+
+@media (max-width:520px){
+  .chip{display:none}
+  .tally{gap:14px}
+  .say{margin-left:0;width:100%}
+  #play{padding:0 16px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .wave i{transition:none}
+}
+</style>
+
+<div class="wrap">
+
+  <header class="bar">
+    <div class="mark">Walk<span>·</span>Up</div>
+    <div class="tally">
+      <div class="stat"><b id="s-ab">0</b><i>At bats</i></div>
+      <div class="stat"><b id="s-hit">0</b><i>Hits</i></div>
+      <div class="stat hot"><b id="s-strk">0</b><i>Streak</i></div>
+      <div class="stat"><b id="s-best">0</b><i>Best</i></div>
+    </div>
+  </header>
+
+  <main class="card">
+    <div class="eyebrow" id="eyebrow">Now batting</div>
+
+    <div class="who">
+      <div class="chip" id="pos">RP</div>
+      <div>
+        <h1 class="name" id="name">—</h1>
+        <p class="meta" id="meta">—</p>
+      </div>
+    </div>
+
+    <div class="deck">
+      <div class="wave" id="wave" aria-hidden="true"></div>
+      <div class="field">
+        <input id="guess" type="text" autocomplete="off" autocorrect="off"
+               spellcheck="false" placeholder="Name the song…"
+               aria-label="Type the walk-up song title" />
+        <button id="play">Call it</button>
+      </div>
+
+      <div class="row">
+        <button class="ghost" id="hint">Hint</button>
+        <button class="ghost" id="give">Give up</button>
+        <span class="say" id="say"></span>
+      </div>
+
+      <div class="hints" id="hints"></div>
+    </div>
+
+    <section class="reveal" id="reveal">
+      <div class="verdict" id="verdict">Base hit</div>
+      <h2 class="song" id="song">—</h2>
+      <p class="by" id="by">—</p>
+      <div class="tape" id="tape">
+        <div class="screen" id="screen"></div>
+      </div>
+      <a class="listen" id="listen" href="#" target="_blank" rel="noopener">Open on YouTube</a>
+      <div class="flag" id="flag" style="display:none"></div>
+      <div><button id="next">Next batter</button></div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span id="pool">0 batters in the lineup</span>
+    <span>Title only — artist not required</span>
+  </footer>
+
+</div>
+
+<script>
+/* ── answer matching ──────────────────────────────────────── */
+function norm(s){
+  return s.toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")   // é → e
+    .replace(/&/g," and ")
+    .replace(/[^a-z0-9 ]/g," ")                        // punctuation out
+    .replace(/\s+/g," ").trim()
+    .replace(/^the /,"");
+}
+
+function lev(a,b){
+  const m=a.length,n=b.length;
+  if(!m) return n; if(!n) return m;
+  let prev=Array.from({length:n+1},(_,i)=>i), cur=new Array(n+1);
+  for(let i=1;i<=m;i++){
+    cur[0]=i;
+    for(let j=1;j<=n;j++){
+      cur[j]=Math.min(prev[j]+1, cur[j-1]+1, prev[j-1]+(a[i-1]===b[j-1]?0:1));
+    }
+    [prev,cur]=[cur,prev];
+  }
+  return prev[n];
+}
+
+function close(a,b){
+  if(a===b) return true;
+  const long=Math.max(a.length,b.length);
+  if(long<4) return false;
+  return 1 - lev(a,b)/long >= 0.85;          // tolerates a typo or two
+}
+
+// second pass: drop filler words, so "Enter THE Sandman" still lands
+const FILLER = /\b(the|a|an|and|of|to|in|on|my|is)\b/g;
+function loose(s){ return norm(s).replace(FILLER," ").replace(/\s+/g," ").trim(); }
+
+function correct(raw, p){
+  const g = norm(raw), gl = loose(raw);
+  if(g.length < 2) return false;
+  const answers = [p.song, ...(p.aliases||[])];
+  return answers.some(ans=>{
+    const a = norm(ans), al = loose(ans);
+    if(close(g,a) || close(gl,al)) return true;
+    // "sandman" for "enter sandman" — needs to be a real chunk of the title
+    const part = (full,part)=> part.length>=5 && full.includes(part) && part.length>=full.length*0.5;
+    return part(a,g) || part(al,gl);
+  });
+}
+
+/* ── state ────────────────────────────────────────────────── */
+let deck=[], cur=null, ab=0, hits=0, streak=0, best=0, hintStage=0, done=false;
+
+const $ = id => document.getElementById(id);
+const wave = $("wave");
+
+for(let i=0;i<44;i++) wave.appendChild(document.createElement("i"));
+const bars = [...wave.children];
+
+function drawWave(amp){
+  bars.forEach((b,i)=>{
+    const shape = Math.sin(i/44*Math.PI);                 // taper at the ends
+    const jitter = 0.45 + 0.55*Math.abs(Math.sin(i*2.7));
+    b.style.height = (6 + amp*shape*jitter*88) + "%";
+  });
+}
+drawWave(0);
+
+function shuffle(){
+  deck = PLAYERS.map((p,i)=>i);
+  for(let i=deck.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [deck[i],deck[j]]=[deck[j],deck[i]];
+  }
+}
+
+function skeleton(title){
+  return title.split(" ").map(w=>{
+    const letters = w.replace(/[^A-Za-z0-9]/g,"");
+    if(!letters) return w;
+    return w[0] + "·".repeat(Math.max(letters.length-1,0));
+  }).join("   ");
+}
+
+function stepUp(){
+  if(!deck.length) shuffle();
+  cur = PLAYERS[deck.pop()];
+  done=false; hintStage=0;
+
+  $("name").textContent = cur.name;
+  $("pos").textContent  = cur.pos;
+  $("meta").innerHTML   = `<em>${cur.team}</em> · <span class="years">${cur.years}</span>`;
+  $("eyebrow").textContent = "Now batting";
+
+  $("guess").value=""; $("guess").disabled=false;
+  $("say").textContent=""; $("say").className="say";
+  $("hints").className="hints"; $("hints").innerHTML="";
+  $("reveal").className="reveal";
+  $("screen").replaceChildren();   // kill the old iframe so its audio stops
+  $("hint").disabled=false; $("give").disabled=false;
+  wave.className="wave"; drawWave(0);
+  $("guess").focus();
+  $("pool").textContent = PLAYERS.length +
+    (PLAYERS.length === 1 ? " batter in the lineup" : " batters in the lineup");
+}
+
+function score(){
+  $("s-ab").textContent=ab; $("s-hit").textContent=hits;
+  $("s-strk").textContent=streak; $("s-best").textContent=best;
+}
+
+function reveal(won){
+  done=true;
+  ab++;
+  if(won){ hits++; streak++; best=Math.max(best,streak); }
+  else streak=0;
+  score();
+
+  $("guess").disabled=true;
+  $("hint").disabled=true; $("give").disabled=true;
+  $("eyebrow").textContent = won ? "That's the one" : "The answer";
+
+  wave.className = "wave " + (won?"hit":"miss");
+  drawWave(won?1:0.18);
+
+  $("verdict").textContent = won
+    ? (hintStage ? "Hit — with help" : "Base hit")
+    : "Struck out";
+  $("verdict").className = "verdict" + (won?"":" cold");
+  $("song").textContent = cur.song;
+  $("by").textContent = cur.artist;
+
+  const screen = $("screen"), link = $("listen");
+  if(cur.yt){
+    const f = document.createElement("iframe");
+    f.src = "https://www.youtube-nocookie.com/embed/" + cur.yt + "?rel=0";
+    f.title = cur.song + " — " + cur.artist;
+    f.allow = "accelerometer; encrypted-media; picture-in-picture";
+    f.allowFullscreen = true;
+    f.loading = "lazy";
+    screen.replaceChildren(f);
+    link.href = "https://www.youtube.com/watch?v=" + cur.yt;
+    link.textContent = "Open on YouTube";
+  } else {
+    screen.replaceChildren(
+      Object.assign(document.createElement("div"),
+        {className:"gap", textContent:"No video on file yet"}));
+    link.href = "https://www.youtube.com/results?search_query=" +
+                encodeURIComponent(cur.artist + " " + cur.song);
+    link.textContent = "Search YouTube";
+  }
+
+  $("flag").textContent = cur.check || "";
+  $("flag").style.display = cur.check ? "inline-block" : "none";
+  $("reveal").className = "reveal on";
+  $("next").focus();
+}
+
+/* ── input ────────────────────────────────────────────────── */
+$("guess").addEventListener("input", e=>{
+  if(done) return;
+  const n = Math.min(e.target.value.length/22, 1);
+  wave.className = n>0 ? "wave armed" : "wave";
+  drawWave(n*0.85);
+});
+
+function call(){
+  if(done) return;
+  const v = $("guess").value.trim();
+  if(!v){ $("guess").focus(); return; }
+  if(correct(v,cur)) reveal(true);
+  else{
+    $("say").textContent = "Not it. Try again, or take a hint.";
+    $("say").className="say no";
+    $("guess").select();
+  }
+}
+
+$("play").addEventListener("click", call);
+$("guess").addEventListener("keydown", e=>{ if(e.key==="Enter") call(); });
+
+$("hint").addEventListener("click", ()=>{
+  if(done) return;
+  hintStage++;
+  const box = $("hints");
+  box.className="hints on";
+  if(hintStage===1){
+    box.insertAdjacentHTML("beforeend",
+      `<p>Artist &nbsp;·&nbsp; <b style="letter-spacing:0">${cur.artist}</b></p>`);
+  } else if(hintStage===2){
+    box.insertAdjacentHTML("beforeend",
+      `<p>Title &nbsp;·&nbsp; <b>${skeleton(cur.song)}</b></p>`);
+    $("hint").disabled=true;
+  }
+});
+
+$("give").addEventListener("click", ()=>{ if(!done) reveal(false); });
+$("next").addEventListener("click", stepUp);
+document.addEventListener("keydown", e=>{
+  // the Next button handles its own Enter — don't advance twice
+  if(done && e.key==="Enter" && e.target.id!=="next"){ e.preventDefault(); stepUp(); }
+});
+
+shuffle(); score(); stepUp();
+</script>
+</body>
+</html>
